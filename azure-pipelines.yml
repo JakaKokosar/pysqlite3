@@ -1,0 +1,103 @@
+trigger:
+- master
+
+jobs:
+- job: linux
+  pool:
+    vmImage: 'ubuntu-16.04'
+  strategy:
+    matrix:
+      python36:
+        python: '/opt/python/cp36-cp36m/bin'
+      python37:
+        python: '/opt/python/cp37-cp37m/bin'
+
+  container:
+    image: quay.io/pypa/manylinux1_x86_64:latest
+    options: -e PLAT=manylinux1_x86_64
+
+  steps:
+    - bash: | 
+       $(python)/python setup.py build_static
+       $(python)/python setup.py install --user
+
+    - bash: ./build_wheels.sh
+      displayName: 'Build wheels'
+      env:
+        PYBIN: $(python)
+
+    - bash: |
+        mkdir -p dist
+        cp wheelhouse/pysqlite3*manylinux*.whl dist/
+      displayName: 'Copy files to dist folder'
+
+    - task: PublishBuildArtifacts@1
+      inputs: 
+        pathtoPublish: 'dist'
+
+
+- job: macos
+  pool: 
+    vmImage: 'macOS-10.14'
+  strategy:
+    matrix:
+      Python36:
+        python.version: '3.6'
+      Python37:
+        python.version: '3.7'
+  steps: 
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(python.version)'
+      
+    - script: |
+        python -m pip install --upgrade pip wheel setuptools
+        python setup.py build_static
+        python setup.py install
+
+    - script: python setup.py bdist_wheel
+      displayName: 'Build wheel'
+    
+    - script: python -m pip install --force-reinstall --find-links dist pysqlite3
+      displayName: 'Install wheel'
+
+    - script: |
+        python -c "import pysqlite3.dbapi2 as sqlite3; print(sqlite3.__file__);"
+        python -c "import pysqlite3.dbapi2 as sqlite3; conn=sqlite3.connect(':memory:'); cursor=conn.cursor(); cursor.execute('CREATE VIRTUAL TABLE testing USING fts5(data);')"
+
+    - task: PublishBuildArtifacts@1
+      inputs: 
+        pathtoPublish: 'dist'
+
+- job: windows
+  pool: 
+    vmImage: 'windows-2019'
+  strategy:
+    matrix:
+      Python36:
+        python.version: '3.6'
+      Python37:
+        python.version: '3.7'
+  steps: 
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(python.version)'
+      
+    - script: |
+        python -m pip install --upgrade pip wheel setuptools
+        python setup.py build_static
+        python setup.py install
+
+    - script: python setup.py bdist_wheel
+      displayName: 'Build wheel'
+    
+    - script: python -m pip install --force-reinstall --find-links dist pysqlite3
+      displayName: 'Install wheel'
+
+    - script: |
+        python -c "import pysqlite3.dbapi2 as sqlite3; print(sqlite3.__file__);"
+        python -c "import pysqlite3.dbapi2 as sqlite3; conn=sqlite3.connect(':memory:'); cursor=conn.cursor(); cursor.execute('CREATE VIRTUAL TABLE testing USING fts5(data);')"
+
+    - task: PublishBuildArtifacts@1
+      inputs: 
+        pathtoPublish: 'dist'
