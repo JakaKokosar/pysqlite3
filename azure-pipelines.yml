@@ -26,15 +26,18 @@ jobs:
       env:
         PYBIN: $(python)
 
-    - bash: |
-        mkdir -p dist
-        cp wheelhouse/pysqlite3*manylinux*.whl dist/
-      displayName: 'Copy files to dist folder'
+    - task: CopyFiles@2
+      condition: eq(variables['Agent.JobStatus'], 'Succeeded')
+      inputs:
+        sourceFolder: $(Build.SourcesDirectory)/wheelhouse
+        contents: pysqlite3*manylinux*.whl
+        targetFolder: $(Build.ArtifactStagingDirectory)
 
     - task: PublishBuildArtifacts@1
-      inputs: 
-        pathtoPublish: 'dist'
-
+      condition: eq(variables['Agent.JobStatus'], 'Succeeded')
+      inputs:
+        artifactName: 'build'
+        pathtoPublish: $(Build.ArtifactStagingDirectory)
 
 - job: macos
   pool: 
@@ -65,9 +68,18 @@ jobs:
         python -c "import pysqlite3.dbapi2 as sqlite3; print(sqlite3.__file__);"
         python -c "import pysqlite3.dbapi2 as sqlite3; conn=sqlite3.connect(':memory:'); cursor=conn.cursor(); cursor.execute('CREATE VIRTUAL TABLE testing USING fts5(data);')"
 
+    - task: CopyFiles@2
+      condition: eq(variables['Agent.JobStatus'], 'Succeeded')
+      inputs:
+        sourceFolder: $(Build.SourcesDirectory)/dist
+        contents: pysqlite3*.whl
+        targetFolder: $(Build.ArtifactStagingDirectory)
+
     - task: PublishBuildArtifacts@1
-      inputs: 
-        pathtoPublish: 'dist'
+      condition: eq(variables['Agent.JobStatus'], 'Succeeded')
+      inputs:
+        artifactName: 'build'
+        pathtoPublish: $(Build.ArtifactStagingDirectory)
 
 - job: windows
   pool: 
@@ -98,6 +110,15 @@ jobs:
         python -c "import pysqlite3.dbapi2 as sqlite3; print(sqlite3.__file__);"
         python -c "import pysqlite3.dbapi2 as sqlite3; conn=sqlite3.connect(':memory:'); cursor=conn.cursor(); cursor.execute('CREATE VIRTUAL TABLE testing USING fts5(data);')"
 
+    - task: CopyFiles@2
+      condition: eq(variables['Agent.JobStatus'], 'Succeeded')
+      inputs:
+        sourceFolder: $(Build.SourcesDirectory)/dist
+        contents: pysqlite3*.whl
+        targetFolder: $(Build.ArtifactStagingDirectory)
+
     - task: PublishBuildArtifacts@1
-      inputs: 
-        pathtoPublish: 'dist'
+      condition: eq(variables['Agent.JobStatus'], 'Succeeded')
+      inputs:
+        artifactName: 'build'
+        pathtoPublish: $(Build.ArtifactStagingDirectory)
